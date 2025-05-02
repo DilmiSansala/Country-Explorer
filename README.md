@@ -64,7 +64,7 @@ npm test
 
 ## Deployment
 
-The application is deployed at [https://countries-explorer.example.com](https://countries-explorer.example.com)
+https://country-explorer-steel.vercel.app/
 
 ## Project Structure
 
