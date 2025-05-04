@@ -1,6 +1,5 @@
-// src/contexts/SessionContext.js
 import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios'; // Add axios for API calls
+import axios from 'axios';
 
 export const SessionContext = createContext();
 
@@ -9,19 +8,49 @@ export const SessionProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [favoriteCountries, setFavoriteCountries] = useState([]);
 
+  const fetchFavorites = async (token) => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/favorites', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setFavoriteCountries(response.data.favoriteCountries || []);
+      localStorage.setItem('favoriteCountries', JSON.stringify(response.data.favoriteCountries || []));
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      setFavoriteCountries([]);
+      localStorage.setItem('favoriteCountries', JSON.stringify([]));
+    }
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-      const storedFavorites = localStorage.getItem('favoriteCountries');
-      if (storedFavorites) {
+    const token = localStorage.getItem('token');
+    if (storedUser && storedUser !== 'undefined' && token) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+        fetchFavorites(token);
+      } catch (e) {
+        console.error('Error parsing stored user:', e);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
+    }
+
+    const storedFavorites = localStorage.getItem('favoriteCountries');
+    if (storedFavorites && storedFavorites !== 'undefined') {
+      try {
         setFavoriteCountries(JSON.parse(storedFavorites));
+      } catch (e) {
+        console.error('Error parsing stored favorites:', e);
+        localStorage.removeItem('favoriteCountries');
       }
     }
   }, []);
 
-  // Register function
   const register = async (username, password) => {
     try {
       const response = await axios.post('http://localhost:5000/api/register', {
@@ -32,14 +61,20 @@ export const SessionProvider = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('token', token); // Store the token for authenticated requests
+      localStorage.setItem('token', token);
+      await fetchFavorites(token);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || 'Registration failed' };
+      let errorMessage = 'Registration failed';
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Cannot connect to the server. Please ensure the backend is running on http://localhost:5000';
+      } else if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+      }
+      return { success: false, error: errorMessage };
     }
   };
 
-  // Login function
   const login = async (username, password) => {
     try {
       const response = await axios.post('http://localhost:5000/api/login', {
@@ -51,32 +86,57 @@ export const SessionProvider = ({ children }) => {
       setIsAuthenticated(true);
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', token);
+      await fetchFavorites(token);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.response?.data?.message || 'Login failed' };
+      let errorMessage = 'Login failed';
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Cannot connect to the server. Please ensure the backend is running on http://localhost:5000';
+      } else if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+      }
+      return { success: false, error: errorMessage };
     }
   };
 
-  // Logout function
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
+    setFavoriteCountries([]);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('favoriteCountries');
   };
 
-  // Toggle favorite country
-  const toggleFavorite = (countryCode) => {
-    setFavoriteCountries((prevFavorites) => {
-      let newFavorites;
-      if (prevFavorites.includes(countryCode)) {
-        newFavorites = prevFavorites.filter((code) => code !== countryCode);
+  const toggleFavorite = async (countryCode) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No token found, cannot toggle favorite');
+      return;
+    }
+
+    try {
+      if (favoriteCountries.includes(countryCode)) {
+        await axios.delete(`http://localhost:5000/api/favorites/${countryCode}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
       } else {
-        newFavorites = [...prevFavorites, countryCode];
+        await axios.post(
+          'http://localhost:5000/api/favorites',
+          { countryCode },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
       }
-      localStorage.setItem('favoriteCountries', JSON.stringify(newFavorites));
-      return newFavorites;
-    });
+      await fetchFavorites(token);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   const isFavorite = (countryCode) => {
@@ -90,7 +150,7 @@ export const SessionProvider = ({ children }) => {
         isAuthenticated,
         login,
         logout,
-        register, 
+        register,
         favoriteCountries,
         toggleFavorite,
         isFavorite,
