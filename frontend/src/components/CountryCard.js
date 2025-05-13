@@ -6,10 +6,11 @@ const CountryCard = ({ country }) => {
   const { isAuthenticated, isFavorite, toggleFavorite } = useContext(SessionContext);
   const [isHovered, setIsHovered] = useState(false);
 
+    // Helper function to format population numbers with commas
   const formatPopulation = (population) => {
     return population.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
-
+  // Function to get region-specific colors for styling
   const getRegionColors = (region) => {
     switch(region) {
       case 'Africa': return {
