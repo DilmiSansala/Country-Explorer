@@ -84,6 +84,7 @@ const HomePage = () => {
       }
       setShowFavorites(false);
     } else {
+       // Filter to show only favorite countries
       const favorites = countries.filter(country => 
         favoriteCountries.includes(country.cca3)
       );
