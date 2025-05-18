@@ -52,7 +52,7 @@ const HomePage = () => {
       setLoading(false);
     }
   };
-
+    // Handler for search bar submissions
   const handleSearch = async (term) => {
     setSearchTerm(term);
     setShowFavorites(false);

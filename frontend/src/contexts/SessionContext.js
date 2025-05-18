@@ -16,6 +16,7 @@ export const SessionProvider = ({ children }) => {
         },
       });
       setFavoriteCountries(response.data.favoriteCountries || []);
+      // Also save to localStorage for persistence
       localStorage.setItem('favoriteCountries', JSON.stringify(response.data.favoriteCountries || []));
     } catch (error) {
       console.error('Error fetching favorites:', error);

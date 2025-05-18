@@ -34,7 +34,7 @@ const CountryList = ({ countries, loading, error }) => {
       </div>
     );
   }
-
+   // Display empty state when no countries match filters
   if (!countries || countries.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-96">
